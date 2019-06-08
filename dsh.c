@@ -1,8 +1,24 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
+
+
+int child_proc(const char *cmd) {
+  pid_t pid = fork();
+  assert(pid >= 0);
+  if (pid == 0) {
+    char *const argv[] = {"ls", NULL};
+    execv(cmd, argv);
+  } else {
+    int status;
+    waitpid(pid, &status, 0);
+  }
+}
 
 bool is_whitespace(char c) {
   return c == ' ' || c == '\n' || c == '\t' || c == '\r';
@@ -46,14 +62,26 @@ void _cd(const char *cmd) {
   printf("err: %d\n", err);
 }
 
+void _ls() {
+  child_proc("/usr/bin/ls");
+}
+
 void exec_cmd(char *cmd) {
   rstrip(cmd);
   if (streq(cmd, "pwd")) 
     _pwd();
   else if (startswith(cmd, "cd "))
     _cd(cmd);
+  else if (streq(cmd, "ls"))   
+    _ls();
   else
     printf("wtf: %s\n", cmd);
+}
+
+void prompt() {
+  char buf[256];
+  getcwd(buf, sizeof buf);
+  printf("[%s]\n> ", buf);
 }
 
 int main(int argc, char *argv[]) {
@@ -64,7 +92,7 @@ int main(int argc, char *argv[]) {
 
 
   for (;;) {
-    printf("> ");
+    prompt();
 
     if (NULL == fgets(line, sizeof line, stdin)) 
       break;
