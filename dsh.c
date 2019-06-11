@@ -1,8 +1,11 @@
 #include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -11,9 +14,65 @@
 int child_proc(const char *cmd) {
   pid_t pid = fork();
   assert(pid >= 0);
+
   if (pid == 0) {
-    char *const argv[] = {"ls", NULL};
-    execv(cmd, argv);
+    char buf[4096];
+    memcpy(buf, cmd, sizeof buf);
+
+    char prog_path[256];
+    memset(prog_path, 0, sizeof prog_path);
+    strcat(prog_path, "/usr/bin/");
+
+    char *prog_name = strtok(buf, " "); 
+    strcat(prog_path, prog_name);
+
+    char *argv[] = {prog_name, NULL};
+
+    char *stdin_redirect; 
+    char *stdout_redirect; 
+
+    for (char *s = strtok(NULL, " "); s != NULL; s = strtok(NULL, " ")) {
+      if (*s == '>')
+        stdout_redirect = s + 1;
+
+      if (*s == '<')
+        stdin_redirect = s + 1;
+    }
+
+    if (stdout_redirect) {
+      errno = 0;
+      int fd = open(stdout_redirect, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+      if (errno)
+        perror("open for write");
+
+      assert(fd >= 0) ;
+
+      printf("%s %d\n", __FILE__, __LINE__);
+
+      errno = 0;
+      int new_fd = dup2(fd, STDOUT_FILENO);
+
+      if (errno)
+        perror("dup2");
+
+      assert(new_fd == STDOUT_FILENO);
+
+      int err = close(fd);
+      assert(!err);
+    }
+
+    if (stdin_redirect) {
+      int fd = open(stdin_redirect, O_RDONLY);
+      assert(fd >= 0) ;
+
+      int err = dup2(fd, STDOUT_FILENO);
+      assert(!err);
+
+      err = close(fd);
+      assert(!err);
+    }
+
+    execv(prog_path, argv);
   } else {
     int status;
     waitpid(pid, &status, 0);
@@ -33,6 +92,13 @@ char *rstrip(char *s) {
   while (n >= 0 && is_whitespace(s[n]))
     s[n--] = '\0';
   return s;
+}
+
+char *strip(char **s) {
+  while (is_whitespace(**s)) {
+    *s += 1;
+  }
+  return rstrip(*s);
 }
 
 bool startswith(char *target, char *prefix) {
@@ -62,20 +128,13 @@ void _cd(const char *cmd) {
   printf("err: %d\n", err);
 }
 
-void _ls() {
-  child_proc("/usr/bin/ls");
-}
-
 void exec_cmd(char *cmd) {
   rstrip(cmd);
-  if (streq(cmd, "pwd")) 
-    _pwd();
-  else if (startswith(cmd, "cd "))
+  if (startswith(cmd, "cd "))
     _cd(cmd);
-  else if (streq(cmd, "ls"))   
-    _ls();
-  else
-    printf("wtf: %s\n", cmd);
+
+  else 
+    child_proc(cmd);
 }
 
 void prompt() {
@@ -89,7 +148,6 @@ int main(int argc, char *argv[]) {
   memset(line, 0, sizeof line);
 
   setlinebuf(stdin);
-
 
   for (;;) {
     prompt();
