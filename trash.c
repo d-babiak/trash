@@ -67,9 +67,9 @@ void eval(char **tokens, int n) {
 
     int wstatus = 0;
 
-    bool background = false;
+    bool foreground = true;
     if (streq(tokens[n - 1], "poof")) {
-      background = true;
+      foreground = false;
       tokens[n - 1] = NULL;
     } 
 
@@ -81,9 +81,7 @@ void eval(char **tokens, int n) {
         break;
 
       default: 
-        if (background)
-          return;
-        else
+        if (foreground)
           waitpid(pid, &wstatus, 0);
     }
   }
