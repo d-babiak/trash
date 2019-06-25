@@ -1,74 +1,29 @@
-#define MAX_LINE 1024
-#define MAX_TOKENS 255
-#define streq(x,y) (x && y && !strcmp(x,y))
-#define zero(xs)   memset(xs, 0, sizeof xs)
-
-#define iswhitespace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
-
+#include "./dmb/strs.h"
 #include <assert.h>
-#include <ctype.h>
+#include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
-// typedef void (*sighandler_t)(int);
+#define MAX_LINE 1024
 
 void sig_handler(int n) {
   printf("o_o\n");
 }
 
-void
-install_signal_handlers() {
+void install_signal_handlers() {
   struct sigaction *act = malloc(sizeof(struct sigaction));
   memset(act, 0, sizeof(struct sigaction));
 
   act->sa_handler = sig_handler;
   act->sa_flags   = 0;
 
-
   int err = sigaction(SIGINT, act, 0);
   assert(!err);
-}
-
-// this is a little surprising
-void lstrip(char **s) {
-  while (isblank(**s))
-    *s += 1;
-}
-
-void rstrip(char *s) {
-  for (int i = strlen(s) - 1; i >= 0 && iswhitespace(s[i]); i--)
-    s[i] = '\0';
-}
-
-void strip(char *s) {
-  lstrip(&s);
-  rstrip(s);
-}
-
-int tokenize(char *s, char **tokens, size_t max_len) {
-  memset(tokens, 0, max_len * sizeof(void *));
-  int i = 0;
-  for (char *token = strtok(s, " "); token != NULL; token = strtok(NULL, " " )) {
-    if (i > MAX_TOKENS) {
-      fprintf(stderr, "o_o\n");
-      return -1;
-    }
-    tokens[i++] = token;
-  }
-  return i;
-}
-
-void
-__pwd() {
-  char buf[4096];
-  getcwd(buf, sizeof buf);
-  printf("%s\n", buf);
 }
 
 const char *CMDS[] = {
@@ -89,8 +44,7 @@ bool supported(char *cmd) {
   return false;
 }
 
-void 
-__eval(char **tokens, int n) {
+void eval(char **tokens, int n) {
   char *cmd = tokens[0];
 
   if (streq(cmd, "quit") || streq(cmd, "exit")) {
@@ -98,7 +52,9 @@ __eval(char **tokens, int n) {
     exit(0);
   }
   else if (streq(cmd, "pwd")) {
-    __pwd();
+    char buf[4096];
+    getcwd(buf, sizeof buf);
+    printf("%s\n", buf);
   }
   else if (streq(cmd, "cd")) {
     char *dir = tokens[1];
@@ -136,7 +92,6 @@ __eval(char **tokens, int n) {
   }
 }
 
-
 int main(int argc, char *argv[]) {
   install_signal_handlers();
 
@@ -158,7 +113,7 @@ int main(int argc, char *argv[]) {
     if (n <= 0) 
       continue;
 
-    __eval(tokens, n);
+    eval(tokens, n);
   }
   printf("\n");
 }
