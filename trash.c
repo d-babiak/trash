@@ -5,14 +5,35 @@
 
 #define iswhitespace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 
+#include <assert.h>
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+
+// typedef void (*sighandler_t)(int);
+
+void sig_handler(int n) {
+  printf("o_o\n");
+}
+
+void
+install_signal_handlers() {
+  struct sigaction *act = malloc(sizeof(struct sigaction));
+  memset(act, 0, sizeof(struct sigaction));
+
+  act->sa_handler = sig_handler;
+  act->sa_flags   = 0;
+
+
+  int err = sigaction(SIGINT, act, 0);
+  assert(!err);
+}
 
 // this is a little surprising
 void lstrip(char **s) {
@@ -54,6 +75,7 @@ const char *CMDS[] = {
   "clear",
   "ls",
   "rm",
+  "sleep",
   "touch",
   "vim",
   NULL
@@ -116,12 +138,13 @@ __eval(char **tokens, int n) {
 
 
 int main(int argc, char *argv[]) {
-  char line[MAX_LINE];
-  zero(line);
-  char *tokens[MAX_TOKENS + 1];
-  zero(tokens);
+  install_signal_handlers();
 
+  char line[MAX_LINE];
+  char *tokens[MAX_TOKENS + 1];
   for (;;) {
+    zero(line); 
+    zero(tokens);
     printf("> ");
 
     fgets(line, sizeof line, stdin);
