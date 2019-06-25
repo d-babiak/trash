@@ -1,10 +1,16 @@
 #define MAX_LINE 1024
 #define MAX_TOKENS 255
+#define streq(x,y) (x && y && !strcmp(x,y))
+#define zero(xs)   memset(xs, 0, sizeof xs)
 
-#include <stdio.h>
-#include <string.h>
+#define iswhitespace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
+
 #include <ctype.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 
 // this is a little surprising
 void lstrip(char **s) {
@@ -13,7 +19,7 @@ void lstrip(char **s) {
 }
 
 void rstrip(char *s) {
-  for (int i = strlen(s) - 1; i >= 0 && isblank(s[i]); i--)
+  for (int i = strlen(s) - 1; i >= 0 && iswhitespace(s[i]); i--)
     s[i] = '\0';
 }
 
@@ -30,27 +36,39 @@ int tokenize(char *s, char **tokens, size_t max_len) {
       fprintf(stderr, "o_o\n");
       return -1;
     }
-
     tokens[i++] = token;
   }
   return i;
 }
 
+void __pwd() {
+  char buf[4096];
+  getcwd(buf, sizeof buf);
+  printf("%s\n", buf);
+}
+
+void __eval(char **tokens) {
+  char *cmd = tokens[0];
+
+  if (streq(cmd, "quit") || streq(cmd, "exit")) {
+    printf("The trash heap has spoken\n");
+    exit(0);
+  }
+  else if (streq(cmd, "pwd")) {
+    __pwd();
+  }
+  else {
+    for (char **t = tokens; *t; t++)
+      printf("%ld: %s\n", t - tokens, *t);
+  }
+}
+
+
 int main(int argc, char *argv[]) {
-  printf("argv[1]: %s\n", argv[1]);
-
-  char *tokens[MAX_TOKENS + 1];
-
-  int err = tokenize(argv[1], tokens, MAX_TOKENS);
-
-  for (char **t = tokens; *t != NULL; t++)
-    printf("%ld: %s\n", t - tokens, *t);
-
-  exit(0);
-
-
   char line[MAX_LINE];
-  memset(line, 0, sizeof line);
+  zero(line);
+  char *tokens[MAX_TOKENS + 1];
+  zero(tokens);
 
   for (;;) {
     printf("> ");
@@ -61,8 +79,12 @@ int main(int argc, char *argv[]) {
       break;
 
     strip(line);
+    int n = tokenize(line, tokens, MAX_TOKENS);
 
-    printf("%s (the trash heap has spoken)\n", line);
+    if (n <= 0) 
+      continue;
+
+    __eval(tokens);
   }
   printf("\n");
 }
