@@ -68,7 +68,7 @@ bool supported(char *cmd) {
 }
 
 void 
-__eval(char **tokens) {
+__eval(char **tokens, int n) {
   char *cmd = tokens[0];
 
   if (streq(cmd, "quit") || streq(cmd, "exit")) {
@@ -88,6 +88,12 @@ __eval(char **tokens) {
 
     int wstatus = 0;
 
+    bool background = false;
+    if (streq(tokens[n - 1], "poof")) {
+      background = true;
+      tokens[n - 1] = NULL;
+    } 
+
     switch (pid) {
       case -1: fprintf(stderr, "u_u\n"); 
         break;
@@ -95,8 +101,11 @@ __eval(char **tokens) {
       case  0: execvp(cmd, tokens);
         break;
 
-      default: waitpid(pid, &wstatus, 0);
-        break;
+      default: 
+        if (background)
+          return;
+        else
+          waitpid(pid, &wstatus, 0);
     }
   }
   else {
@@ -126,7 +135,7 @@ int main(int argc, char *argv[]) {
     if (n <= 0) 
       continue;
 
-    __eval(tokens);
+    __eval(tokens, n);
   }
   printf("\n");
 }
