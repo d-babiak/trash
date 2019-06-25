@@ -41,13 +41,15 @@ int tokenize(char *s, char **tokens, size_t max_len) {
   return i;
 }
 
-void __pwd() {
+void
+__pwd() {
   char buf[4096];
   getcwd(buf, sizeof buf);
   printf("%s\n", buf);
 }
 
-void __eval(char **tokens) {
+void 
+__eval(char **tokens) {
   char *cmd = tokens[0];
 
   if (streq(cmd, "quit") || streq(cmd, "exit")) {
@@ -56,6 +58,11 @@ void __eval(char **tokens) {
   }
   else if (streq(cmd, "pwd")) {
     __pwd();
+  }
+  else if (streq(cmd, "cd")) {
+    char *dir = tokens[1];
+    if (dir) // todo - fstat
+      chdir(dir);
   }
   else {
     for (char **t = tokens; *t; t++)
