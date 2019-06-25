@@ -6,11 +6,13 @@
 #define iswhitespace(c) (c == ' ' || c == '\t' || c == '\n' || c == '\r')
 
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
+#include <sys/types.h>
+#include <sys/wait.h>
 
 // this is a little surprising
 void lstrip(char **s) {
@@ -48,6 +50,23 @@ __pwd() {
   printf("%s\n", buf);
 }
 
+const char *CMDS[] = {
+  "clear",
+  "ls",
+  "rm",
+  "touch",
+  "vim",
+  NULL
+};
+
+bool supported(char *cmd) {
+  for (int i = 0; cmd[i]; i++)
+    if (streq(CMDS[i], cmd))
+      return true;
+
+  return false;
+}
+
 void 
 __eval(char **tokens) {
   char *cmd = tokens[0];
@@ -63,6 +82,22 @@ __eval(char **tokens) {
     char *dir = tokens[1];
     if (dir) // todo - fstat
       chdir(dir);
+  }
+  else if (supported(cmd)) {
+    pid_t pid = fork();
+
+    int wstatus = 0;
+
+    switch (pid) {
+      case -1: fprintf(stderr, "u_u\n"); 
+        break;
+
+      case  0: execvp(cmd, tokens);
+        break;
+
+      default: waitpid(pid, &wstatus, 0);
+        break;
+    }
   }
   else {
     for (char **t = tokens; *t; t++)
