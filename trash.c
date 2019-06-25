@@ -33,12 +33,13 @@ const char *CMDS[] = {
   "sleep",
   "touch",
   "vim",
+  "python3.7",
   NULL
 };
 
 bool supported(char *cmd) {
-  for (int i = 0; cmd[i]; i++)
-    if (streq(CMDS[i], cmd))
+  for (const char **s = CMDS; *s; s++)
+    if (streq(*s, cmd))
       return true;
 
   return false;
