@@ -63,17 +63,14 @@ void eval(char **tokens, int n) {
       chdir(dir);
   }
   else if (supported(cmd)) {
-    pid_t pid = fork();
+    int wstatus;
 
-    int wstatus = 0;
-
-    bool foreground = true;
-    if (streq(tokens[n - 1], "poof")) {
-      foreground = false;
+    bool background = streq(tokens[n - 1], "poof!");
+    if (background)
       tokens[n - 1] = NULL;
-    } 
 
-    switch (pid) {
+    pid_t pid;
+    switch (pid = fork()) {
       case -1: fprintf(stderr, "u_u\n"); 
         break;
 
@@ -81,7 +78,7 @@ void eval(char **tokens, int n) {
         break;
 
       default: 
-        if (foreground)
+        if (!background)
           waitpid(pid, &wstatus, 0);
     }
   }
@@ -96,6 +93,7 @@ int main(int argc, char *argv[]) {
 
   char line[MAX_LINE];
   char *tokens[MAX_TOKENS + 1];
+
   for (;;) {
     zero(line); 
     zero(tokens);
@@ -114,5 +112,6 @@ int main(int argc, char *argv[]) {
 
     eval(tokens, n);
   }
+
   printf("\n");
 }
