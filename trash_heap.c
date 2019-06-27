@@ -2,11 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
+#include <sys/mman.h>
 
 #define MAGIC_TRASH 0x0123456789abcdef
-#define PAGE_SIZE 4096
+#define PAGE_SIZE 8192 
 
-#define b_end(b) (b + sizeof(block_t) + b->size)
+#define b_end(b) (((void *) b) + sizeof(block_t) + b->size)
+
+void *sys_get_mem(size_t n) {
+  //return malloc(n);
+  void *p = mmap(NULL, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+  assert(p != MAP_FAILED);
+  printf("%p %p\n", p, p + n);
+  return p;
+}
 
 typedef struct block {
   struct block *next;
@@ -21,18 +30,20 @@ block_t *B_init(size_t n) {
   while ((sizeof(block_t) + n) > PAGE_SIZE * n_pages)
     n_pages++;
 
-  block_t *b = malloc(PAGE_SIZE * n_pages); // lol
+  block_t *b = sys_get_mem(PAGE_SIZE * n_pages);
   b->next = NULL;
-  b->size = PAGE_SIZE * n_pages;
+  b->size = PAGE_SIZE * n_pages - sizeof(block_t);
 
   return b;
 }
 
 block_t *split(block_t *b, size_t n) {
-  assert((b_end(b) - b) >= (2*sizeof(block_t) + sizeof(void *) + n));
+  assert(b->size >= sizeof(block_t) + sizeof(void *) + n);
 
-  block_t *new_block = (block_t *)(b_end(b) - (sizeof(block_t) + n));
-  new_block->next    = (block_t * ) MAGIC_TRASH;
+  void *p = (void *) b;
+  block_t *new_block = (block_t *)(p + sizeof(block_t) + b->size - (n + sizeof(block_t))  ); // cancels out but w/e
+  printf("new_block: %p\n", new_block);
+  new_block->next    = (block_t *) MAGIC_TRASH;
   new_block->size    = n;
 
   b->size -= (sizeof(block_t) + n);
@@ -89,6 +100,7 @@ void *get_trash(size_t n) {
   }
 }
 
+
 void free_trash(void *p) {
   block_t *to_free = (block_t *)(p - sizeof(block_t));
   if (to_free <= 0) {
@@ -113,8 +125,6 @@ void free_trash(void *p) {
 
   to_free->next = b->next;
   b->next       = to_free;
-
-  // TODO - coalesce
 }
 
 void print_int(char c, int *x) {
