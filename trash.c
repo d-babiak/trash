@@ -1,4 +1,5 @@
 #include "./dmb/strs.h"
+#include "./dmb/trash_heap.h"
 #include <assert.h>
 #include <signal.h>
 #include <stdbool.h>
@@ -16,7 +17,7 @@ void sig_handler(int n) {
 }
 
 void install_signal_handlers() {
-  struct sigaction *act = malloc(sizeof(struct sigaction));
+  struct sigaction *act = get_trash(sizeof(struct sigaction));
   memset(act, 0, sizeof(struct sigaction));
 
   act->sa_handler = sig_handler;
