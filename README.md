@@ -2,8 +2,9 @@
 
 ### The Really Awful Shell
 
+Featuring the trash heap (memory allocator) of Fraggle Rock
+
 **TODO**
-  * The Trash Heap Allocator of Fraggle Rock 
   * Actual useful shell behavior like pipes and stuff
 
 
