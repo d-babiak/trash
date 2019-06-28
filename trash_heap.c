@@ -6,8 +6,8 @@
 
 #define MAGIC_TRASH 0x0123456789abcdef
 #define PAGE_SIZE 8192 
+#define end_of(b) ( ((void*)b) + sizeof(block_t) + b->size)
 
-#define b_end(b) (((void *) b) + sizeof(block_t) + b->size)
 
 void *sys_get_mem(size_t n) {
   //return malloc(n);
@@ -102,6 +102,7 @@ void *get_trash(size_t n) {
 
 
 void free_trash(void *p) {
+  printf("free %p\n", p);
   block_t *to_free = (block_t *)(p - sizeof(block_t));
   if (to_free <= 0) {
     printf("UNPOSSIBLE %d\n", __LINE__);
@@ -125,6 +126,15 @@ void free_trash(void *p) {
 
   to_free->next = b->next;
   b->next       = to_free;
+
+  // coalesce
+  for (block_t *B = trash_heap; B; B = B->next) {
+    while (end_of(B) == B->next) {
+      printf("  SQUASH! %p %lu + %lu", B, B->size, B->next->size);
+      B->size += B->next->size;
+      B->next  = B->next->next;
+    }
+  }
 }
 
 void print_int(char c, int *x) {
@@ -143,8 +153,8 @@ int main(int argc, char *argv[]) {
   print_int('x', x);
   print_int('y', y);
 
-  free_trash(y);
-  print_int('x', x);
   free_trash(x);
+  print_int('x', x);
+  free_trash(y);
   printf("\n");
 }
