@@ -29,12 +29,15 @@ void install_signal_handlers() {
 
 const char *CMDS[] = {
   "clear",
+  "date",
+  "false",
   "ls",
+  "python3.7",
   "rm",
   "sleep",
   "touch",
+  "true",
   "vim",
-  "python3.7",
   NULL
 };
 
@@ -46,7 +49,7 @@ bool supported(char *cmd) {
   return false;
 }
 
-void eval(char **tokens, int n) {
+int eval(char **tokens, int n) {
   char *cmd = tokens[0];
 
   if (streq(cmd, "quit") || streq(cmd, "exit")) {
@@ -79,14 +82,17 @@ void eval(char **tokens, int n) {
         break;
 
       default: 
-        if (!background)
+        if (!background) {
           waitpid(pid, &wstatus, 0);
+          return WEXITSTATUS(wstatus);
+        }
     }
   }
   else {
     for (char **t = tokens; *t; t++)
       printf("%ld: %s\n", t - tokens, *t);
   }
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -105,13 +111,24 @@ int main(int argc, char *argv[]) {
     if (feof(stdin))
       break;
 
-    strip(line);
-    int n = tokenize(line, tokens, MAX_TOKENS);
+    size_t n_cmds = 0;
+    char **commands = split(line, "then", &n_cmds);
+    for (char **cmd = commands; *cmd; cmd++)
+      printf("%ld: %s\n", cmd - commands, *cmd);
 
-    if (n <= 0) 
-      continue;
+    for (char **cmd = commands; *cmd; cmd++) {
+      strip(*cmd);
+      zero(tokens);
+      int n = tokenize(*cmd, tokens, MAX_TOKENS);
 
-    eval(tokens, n);
+      if (n <= 0)
+        break;
+
+      int cmd_err = eval(tokens, n);
+      fprintf(stderr, "    (cmd: %s, cmd_err: %d)\n\n", tokens[0], cmd_err);
+      if (cmd_err) 
+        break;
+    }
   }
 
   printf("\n");
