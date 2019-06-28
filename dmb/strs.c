@@ -15,9 +15,9 @@ void rstrip(char *s) {
     s[i] = '\0';
 }
 
-void strip(char *s) {
-  lstrip(&s);
-  rstrip(s);
+void strip(char **s) {
+  lstrip(s);
+  rstrip(*s);
 }
 
 int tokenize(char *s, char **tokens, size_t max_tokens) {

@@ -35,8 +35,10 @@ const char *CMDS[] = {
   "python3.7",
   "rm",
   "sleep",
+  "sort",
   "touch",
   "true",
+  "uniq",
   "vim",
   NULL
 };
@@ -95,6 +97,70 @@ int eval(char **tokens, int n) {
   return 0;
 }
 
+size_t n_pipes(char *line) {
+  int N = 0;
+  for (int i = 0; line[i]; i++)
+    if (line[i] == '|')
+      N++;
+  return N;
+}
+
+void pipe_eval(char **cmds, size_t n) {
+  pid_t pids[n];
+  int pipe_prev[2];
+  int pipe_next[2];
+
+  for (size_t i = 0; i < n; i++) {
+    bool has_upstream   = 0 < i,
+         has_downstream =     i < n - 1;
+
+    if (has_upstream) {
+      pipe_prev[0] = pipe_next[0];
+      pipe_prev[1] = pipe_next[1];
+    }
+
+    if (has_downstream)
+      pipe(pipe_next);
+
+    pid_t pid;
+
+    switch (pid = fork()) {
+      case -1: fprintf(stderr, "u_u\n"); 
+        break;
+
+      case  0: 
+        if (has_upstream) {
+          close(pipe_prev[STDOUT_FILENO]);
+          dup2(pipe_prev[STDIN_FILENO], STDIN_FILENO);
+        }
+
+        if (has_downstream) {
+          close(pipe_next[STDIN_FILENO]);
+          dup2(pipe_next[STDOUT_FILENO], STDOUT_FILENO);
+        }
+
+        char *cmd = cmds[i]; 
+        char *tokens[MAX_TOKENS + 1];
+        zero(tokens);
+        tokenize(cmd, tokens, MAX_TOKENS);
+        execvp(cmd, tokens);
+        break;
+
+      default: 
+        pids[i] = pid;
+        if (has_upstream) {
+          close(pipe_prev[0]);
+          close(pipe_prev[1]);
+        }
+    }
+
+    for (int i = 0; i < n; i++) {
+      int status;
+      waitpid(pids[i], &status, 0);
+    }
+  }
+}
+
 int main(int argc, char *argv[]) {
   install_signal_handlers();
 
@@ -112,23 +178,37 @@ int main(int argc, char *argv[]) {
       break;
 
     size_t n_cmds = 0;
-    char **commands = split(line, "then", &n_cmds);
-    for (char **cmd = commands; *cmd; cmd++)
-      //printf(stderr, "%ld: %s\n", cmd - commands, *cmd);
 
-    for (char **cmd = commands; *cmd; cmd++) {
-      strip(*cmd);
-      zero(tokens);
-      int n = tokenize(*cmd, tokens, MAX_TOKENS);
+    size_t num_pipes = n_pipes(line);
+    if (num_pipes > 0) {
+      char **commands = split(line, "|", &n_cmds);
 
-      if (n <= 0)
-        break;
+      for (char **cmd = commands; *cmd; cmd++)
+        strip(cmd);
 
-      int cmd_err = eval(tokens, n);
-      fprintf(stderr, "    (cmd: %s, cmd_err: %d)\n\n", tokens[0], cmd_err);
-      if (cmd_err) 
-        break;
+      pipe_eval(commands, n_cmds);
+    } 
+    else {
+      char **commands = split(line, "&&", &n_cmds);
+
+      for (char **cmd = commands; *cmd; cmd++)
+        fprintf(stderr, "%ld: %s\n", cmd - commands, *cmd);
+
+      for (char **cmd = commands; *cmd; cmd++) {
+        strip(cmd);
+        zero(tokens);
+        int n = tokenize(*cmd, tokens, MAX_TOKENS);
+
+        if (n <= 0)
+          break;
+
+        int cmd_err = eval(tokens, n);
+        fprintf(stderr, "    (cmd: %s, cmd_err: %d)\n\n", tokens[0], cmd_err);
+        if (cmd_err) 
+          break;
+      }
     }
+
   }
 
   printf("\n");

@@ -12,7 +12,7 @@ void lstrip(char **s);
 
 void rstrip(char *s);
 
-void strip(char *s);
+void strip(char **s);
 
 int tokenize(char *s, char **tokens, size_t max_len);
 
