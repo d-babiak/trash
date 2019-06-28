@@ -1,4 +1,4 @@
-#include "./trash_heap.h"
+#include "../dmb/trash_heap.h"
 #include <stdio.h>
 
 void print_int(char c, int *x) {
