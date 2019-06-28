@@ -15,4 +15,6 @@ void rstrip(char *s);
 void strip(char *s);
 
 int tokenize(char *s, char **tokens, size_t max_len);
+
+char **split(char *s, char *k, size_t *n);
 #endif
