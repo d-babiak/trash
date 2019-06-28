@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
     size_t n_cmds = 0;
     char **commands = split(line, "then", &n_cmds);
     for (char **cmd = commands; *cmd; cmd++)
-      printf("%ld: %s\n", cmd - commands, *cmd);
+      //printf(stderr, "%ld: %s\n", cmd - commands, *cmd);
 
     for (char **cmd = commands; *cmd; cmd++) {
       strip(*cmd);
